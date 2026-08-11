@@ -1,4 +1,11 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/404.html" },
+    { "source": "/admin/(.*)", "destination": "/404.html" },
+    { "source": "/includes/(.*)", "destination": "/404.html" },
+    { "source": "/apps-script/(.*)", "destination": "/404.html" },
+    { "source": "/data/(.*)", "destination": "/404.html" }
+  ]
 }
