@@ -1,0 +1,7 @@
+# Vercel deploy: static site only (PHP/SQLite backend stays on XAMPP)
+admin/
+api/
+includes/
+apps-script/
+data/
+README.md
