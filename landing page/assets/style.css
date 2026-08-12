@@ -167,7 +167,7 @@ img, svg { display: block; }
 /* ============ Marquee ============ */
 .marquee { margin-top: 76px; overflow: hidden; border-top: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); padding: 18px 0; background: rgba(13, 18, 38, 0.5); }
 .marquee-track { display: flex; align-items: center; gap: 34px; white-space: nowrap; animation: slide 30s linear infinite; width: max-content; }
-.marquee-track span { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; color: var(--muted); }
+.marquee-track span { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; }
 .marquee i { color: var(--primary); font-size: 8px; }
 @keyframes slide { to { transform: translateX(-50%); } }
 
