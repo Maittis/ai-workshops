@@ -102,4 +102,7 @@ function prepareHeaders_(sheet, headers) {
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
   }
+  // Keep phone numbers as plain text (column 3) so Google Sheets
+  // doesn't turn them into numbers / formulas.
+  sheet.getRange(1, 3, Math.max(500, sheet.getMaxRows()), 1).setNumberFormat("@");
 }

@@ -81,7 +81,12 @@ function getFormData() {
   data["Class Time"] = fd.get("classTime");
   data["Level"] = fd.get("level");
   data["Message"] = (fd.get("message") || "").trim();
-  data["Submitted At"] = new Date().toISOString();
+  data["Submitted At"] = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Lusaka",
+    dateStyle: "medium",
+    timeStyle: "short",
+    hour12: false
+  }).format(new Date());
   return data;
 }
 
