@@ -15,7 +15,8 @@ A visual landing page for AI workshops in Lusaka (Meanwood Ndeke) with a **built
 | `admin/index.php` | The admin panel: login, view signups, delete, export buttons |
 | `admin/export.php` | Handles the CSV / Excel download requests |
 | `admin/config.php` | Admin username + password (change before going live!) |
-| `apps-script/Code.gs` | Optional: Google Sheets collector (see below) |
+| `apps-script/Code.gs` | Google Sheets collector + signup list API (see below) |
+| `panel/index.html` | **Online** admin panel (works on Vercel, reads signups from Google Sheets) |
 
 ## What the signup form collects
 
@@ -55,15 +56,16 @@ The form now saves to the local backend **and** to Google Sheets. If the Sheets 
 
 ## Deploying to Vercel (live website)
 
-Vercel can't run PHP or SQLite, so on Vercel the signups are saved to **Google Sheets** via the Apps Script (below). The local admin panel keeps working on XAMPP; online, the Google Sheet is your record.
+Vercel can't run PHP or SQLite, so on Vercel the signups are saved to **Google Sheets** via the Apps Script (below). The local admin panel keeps working on XAMPP; online, use the **online panel** at `/panel/`, which reads the signups straight from Google Sheets.
 
-The project is already configured — Vercel will only deploy the static site (`index.html`, `assets/`, `vercel.json`, and images). The PHP backend folders are excluded via `.vercelignore`.
+The project is already configured — Vercel will only deploy the static site (`index.html`, `assets/`, `panel/`, `vercel.json`, and images). The PHP backend folders are excluded via `.vercelignore`.
 
 **Step 1 — Connect signups to Google Sheets (do this first):**
 1. Create a Google Sheet. Open **Extensions → Apps Script**.
 2. Paste the contents of `apps-script/Code.gs` and save.
 3. **Deploy → New deployment → Web app**: Execute as *Me*, access *Anyone*. Copy the `/exec` URL.
-4. Paste it into `APPS_SCRIPT_URL` at the top of `assets/script.js`.
+4. Paste it into `APPS_SCRIPT_URL` at the top of `assets/script.js` **and** at the top of `panel/index.html`.
+5. Pick a secret word and set it in **two places** (must match): `ADMIN_KEY` in `apps-script/Code.gs`, and `ADMIN_KEY` in `panel/index.html`. Default: `depiction-panel-secret` — change it.
 
 **Step 2 — Deploy:**
 - **Easiest (no install):** put this folder in a GitHub repo (the `.vercelignore` keeps the PHP files out automatically). In Vercel, click **Add New → Project**, import the repo, and it builds as a static site. You're live in ~1 minute.
@@ -71,13 +73,16 @@ The project is already configured — Vercel will only deploy the static site (`
 
 **Step 3 — Verify:** submit the signup form on the live URL, then check your Google Sheet for the new row.
 
+**Step 4 — View signups online:** open **`https://YOUR-PROJECT.vercel.app/panel/`**, enter the admin secret, and you'll see the live signup list with stats, a CSV download, and a link to the sheet. To update the Apps Script code later without breaking the URL: **Deploy → Manage deployments → ✎ Edit → Version: New version → Deploy** (the `/exec` URL stays the same).
+
 > Note: the `apps-script/` folder itself is not deployed — the Apps Script code runs from Google, not Vercel. That's expected.
 
 ## Security notes
 
 - Anyone who can open `http://localhost/landing%20page/admin/` will see a login screen — but the panel is only as secure as your password. **Change `ADMIN_PASSWORD` in `admin/config.php`.**
+- The online panel (`/panel/`) is guarded by the secret in `ADMIN_KEY` / `ADMIN_KEY`(panel). Note this secret is also present in the page source, so it protects casual visitors but isn't bank-grade security — don't reuse a real password. For full privacy, add a Vercel Password Protection rule or a hosted database (see the Supabase option in the chat setup).
 - The `/admin` pages are not protected against snooping if you deploy this to a shared host; consider adding a `.htaccess` password for extra safety if you put it online.
-- Keep `data/` (contains the signup database) out of public browsing if you deploy publicly.
+- Keep `data/` (contains the local signup database) out of public browsing — `.vercelignore` already excludes it from Vercel.
 
 ## Customisation
 

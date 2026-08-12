@@ -15,12 +15,43 @@
 
 var SHEET_NAME = "Signups"; // tab inside your spreadsheet
 
+// Secret used by the online admin panel (panel/index.html) to read signups.
+// Change this to any word/phrase only you know.
+var ADMIN_KEY = "Solar-Mango-426";
+
 function doPost(e) {
   return handleRequest(e);
 }
 
 function doGet(e) {
+  // Online admin panel: GET ?action=list&key=ADMIN_KEY  ->  JSON of all rows
+  if (e && e.parameter && e.parameter.action === "list") {
+    return listRows(e.parameter.key);
+  }
   return handleRequest(e);
+}
+
+function listRows(key) {
+  try {
+    if (key !== ADMIN_KEY) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ result: "error", message: "Unauthorized" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var sheet = getOrCreateSheet_(SHEET_NAME);
+    var lastRow = sheet.getLastRow();
+    var rows = [];
+    if (lastRow > 0) {
+      rows = sheet.getRange(1, 1, lastRow, 8).getValues();
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "success", rows: rows }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "error", message: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function handleRequest(e) {

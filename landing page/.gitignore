@@ -1,0 +1,6 @@
+# Local signup database — never commit
+data/
+*.sqlite
+
+# Local PHP backend is not for public repos/deploys
+admin/config.php
