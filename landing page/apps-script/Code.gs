@@ -95,8 +95,6 @@ function updateRow_(rowNum, fields) {
   }
 }
 
-function handleRequest(e) {
-
 function doGet(e) {
   // Online admin panel: GET ?action=list&key=ADMIN_KEY  ->  JSON of all rows
   if (e && e.parameter && e.parameter.action === "list") {
