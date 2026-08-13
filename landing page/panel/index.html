@@ -146,39 +146,60 @@
   });
   document.getElementById('refreshBtn').addEventListener('click', loadSignups);
 
+  var cached = [];
+  var CACHE_KEY = 'panelSignupsCache';
+
+  function cacheGet(){
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (!obj || !obj.rows || (Date.now() - obj.ts) > 5 * 60 * 1000) return null;
+      return obj.rows;
+    } catch (e) { return null; }
+  }
+  function cacheSet(rows){
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: rows }));
+    } catch (e) {}
+  }
+
   function doLogin(){
     var key = document.getElementById('keyInput').value.trim();
     errEl.style.display = 'none';
     if (!key){ errEl.style.display = 'block'; return; }
-    fetch(APPS_SCRIPT_URL + '?action=list&key=' + encodeURIComponent(key))
-      .then(function(r){ return r.json(); })
-      .then(function(j){
-        if (j && j.result === 'success'){
-          sessionStorage.panelKey = key;
-          setView(true);
-          loadSignups();
-        } else {
-          errEl.style.display = 'block';
-        }
-      })
-      .catch(function(){ errEl.textContent = 'Could not reach Google. Check your internet and try again.'; errEl.style.display = 'block'; });
+    sessionStorage.panelKey = key;
+    setView(true);
+    var saved = cacheGet();
+    if (saved && saved.length){
+      cached = saved;
+      render(saved);
+      document.getElementById('updatedAt').textContent = 'Verifying with Google…';
+    } else {
+      document.getElementById('updatedAt').textContent = 'Loading signups from Google…';
+    }
+    loadSignups();
   }
-
-  var cached = [];
 
   function loadSignups(){
     var key = sessionStorage.panelKey;
+    var updEl = document.getElementById('updatedAt');
+    updEl.textContent = 'Refreshing…';
     fetch(APPS_SCRIPT_URL + '?action=list&key=' + encodeURIComponent(key))
       .then(function(r){ return r.json(); })
       .then(function(j){
-        if (!j || j.result !== 'success') return;
+        if (!j || j.result !== 'success') throw new Error('unauthorized');
         cached = j.rows || [];
+        cacheSet(cached);
         render(cached);
-        document.getElementById('updatedAt').textContent =
-          'Updated ' + new Date().toLocaleString();
+        updEl.textContent = 'Updated ' + new Date().toLocaleString();
       })
       .catch(function(){
-        document.getElementById('updatedAt').textContent = 'Refresh failed.';
+        if (cached.length){
+          updEl.textContent = 'Refresh failed — showing saved copy';
+        } else {
+          updEl.textContent = 'Refresh failed.';
+        }
       });
   }
 

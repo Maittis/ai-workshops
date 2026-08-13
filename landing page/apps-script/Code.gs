@@ -38,14 +38,24 @@ function listRows(key) {
         .createTextOutput(JSON.stringify({ result: "error", message: "Unauthorized" }))
         .setMimeType(ContentService.MimeType.JSON);
     }
+    // Serve from cache when possible so the admin panel loads fast.
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get("signup_rows");
+    if (cached) {
+      return ContentService
+        .createTextOutput(cached)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     var sheet = getOrCreateSheet_(SHEET_NAME);
     var lastRow = sheet.getLastRow();
     var rows = [];
     if (lastRow > 0) {
       rows = sheet.getRange(1, 1, lastRow, 8).getValues();
     }
+    var out = JSON.stringify({ result: "success", rows: rows });
+    cache.put("signup_rows", out, 60);
     return ContentService
-      .createTextOutput(JSON.stringify({ result: "success", rows: rows }))
+      .createTextOutput(out)
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService
