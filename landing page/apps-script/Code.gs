@@ -20,8 +20,82 @@ var SHEET_NAME = "Signups"; // tab inside your spreadsheet
 var ADMIN_KEY = "Solar-Mango-426";
 
 function doPost(e) {
+  var data = {};
+  if (e && e.postData && e.postData.contents) {
+    try { data = JSON.parse(e.postData.contents); } catch (err) { data = {}; }
+  }
+  if (data && data.action === "delete") {
+    var okD = checkKey_(data.key);
+    if (okD !== true) return okD;
+    return deleteRow_(data.row);
+  }
+  if (data && data.action === "update") {
+    var okU = checkKey_(data.key);
+    if (okU !== true) return okU;
+    return updateRow_(data.row, data.fields);
+  }
   return handleRequest(e);
 }
+
+function checkKey_(key) {
+  if (key !== ADMIN_KEY) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "error", message: "Unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  return true;
+}
+
+function jsonResult_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function deleteRow_(rowNum) {
+  try {
+    if (!rowNum || rowNum < 2) return jsonResult_({ result: "error", message: "Invalid row number." });
+    var sheet = getOrCreateSheet_(SHEET_NAME);
+    var lastRow = sheet.getLastRow();
+    if (rowNum > lastRow) return jsonResult_({ result: "error", message: "Row out of range." });
+    sheet.deleteRow(rowNum);
+    CacheService.getScriptCache().remove("signup_rows");
+    return jsonResult_({ result: "success", deleted: rowNum });
+  } catch (err) {
+    return jsonResult_({ result: "error", message: String(err) });
+  }
+}
+
+function updateRow_(rowNum, fields) {
+  try {
+    if (!rowNum || rowNum < 2) return jsonResult_({ result: "error", message: "Invalid row number." });
+    var sheet = getOrCreateSheet_(SHEET_NAME);
+    var lastRow = sheet.getLastRow();
+    if (rowNum > lastRow) return jsonResult_({ result: "error", message: "Row out of range." });
+    var headers = [
+      "Full Name", "Email", "Phone Number", "Profession",
+      "Class Time", "Level", "Message", "Submitted At"
+    ];
+    var colMap = {};
+    headers.forEach(function (h, idx) { colMap[h] = idx + 1; });
+
+    var updates = [];
+    for (var h in fields) {
+      if (colMap[h]) {
+        updates.push([rowNum, colMap[h], String(fields[h] == null ? "" : fields[h])]);
+      }
+    }
+    if (updates.length === 0) return jsonResult_({ result: "error", message: "No valid fields to update." });
+    updates.forEach(function (u) { sheet.getRange(u[0], u[1]).setValue(u[2]); });
+    CacheService.getScriptCache().remove("signup_rows");
+    var updated = sheet.getRange(rowNum, 1, 1, headers.length).getValues()[0];
+    return jsonResult_({ result: "success", updated: rowNum, row: updated });
+  } catch (err) {
+    return jsonResult_({ result: "error", message: String(err) });
+  }
+}
+
+function handleRequest(e) {
 
 function doGet(e) {
   // Online admin panel: GET ?action=list&key=ADMIN_KEY  ->  JSON of all rows

@@ -47,6 +47,20 @@
   input[type=password]:focus{border-color:var(--primary);}
   .err{color:var(--danger); font-size:13px; margin-top:8px; display:none;}
   .hide{display:none !important;}
+  .rowbtns{display:flex; gap:6px; white-space:nowrap;}
+  .rowbtn{padding:5px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12px; font-weight:600; color:var(--text); transition:background .15s;}
+  .rowbtn:hover{background:#eef0ff;}
+  .rowbtn.danger{color:var(--danger); border-color:#ffd3dc; background:#fff0f3;}
+  .rowbtn.danger:hover{background:#ffe3e8;}
+  .modal{position:fixed; inset:0; background:rgba(9,12,30,.55); display:none; align-items:flex-start; justify-content:center; padding:26px 16px; z-index:100; overflow:auto;}
+  .modal.open{display:flex;}
+  .modal-card{background:#fff; border-radius:16px; max-width:620px; width:100%; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .modal-card h2{font-size:17px; margin-bottom:4px;}
+  .modal-card .sub{font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+  .modal-card label{display:block; font-size:12.5px; font-weight:600; margin:12px 0 4px;}
+  .modal-card input{width:100%; padding:9px 11px; border:1.5px solid var(--line); border-radius:9px; font-size:13.5px; outline:none; font-family:inherit;}
+  .modal-card input:focus{border-color:var(--primary);}
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:20px;}
 </style>
 </head>
 <body>
@@ -83,7 +97,7 @@
       <thead>
         <tr>
           <th>#</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Profession</th>
-          <th>Class time</th><th>Level</th><th>Message</th><th>Submitted</th>
+          <th>Class time</th><th>Level</th><th>Message</th><th>Submitted</th><th></th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -105,6 +119,25 @@
   <input type="password" id="keyInput" placeholder="Admin secret" autocomplete="off">
   <button class="btn primary" style="width:100%; justify-content:center" id="loginBtn">View signups</button>
   <div class="err" id="loginErr">Wrong secret. Try again.</div>
+</div>
+
+<div class="modal" id="editModal">
+  <div class="modal-card">
+    <h2>Edit signup</h2>
+    <div class="sub">Changes apply to the Google Sheet immediately.</div>
+    <label>Full Name</label><input id="eName">
+    <label>Email Address</label><input id="eEmail" type="email">
+    <label>Phone Number</label><input id="ePhone">
+    <label>Profession</label><input id="eProfession">
+    <label>Class Time</label><input id="eClassTime">
+    <label>Level</label><input id="eLevel">
+    <label>Message</label><input id="eMessage">
+    <label>Submitted At</label><input id="eTime">
+    <div class="modal-actions">
+      <button class="btn ghost" id="editCancel">Cancel</button>
+      <button class="btn primary" id="editSave">Save changes</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -204,20 +237,23 @@
   }
 
   function render(rows){
-    var data = rows.filter(function(r){ return r.some(function(c){ return String(c).trim() !== ''; }); });
+    var data = [];
+    rows.forEach(function(r, i){
+      if (r.some(function(c){ return String(c).trim() !== ''; })) data.push({ values: r, src: i });
+    });
     document.getElementById('statTotal').textContent = data.length;
     var now = new Date();
     var dayStart = new Date(now); dayStart.setHours(0,0,0,0);
     var weekStart = new Date(now); weekStart.setDate(now.getDate() - 7);
     var today = 0, week = 0, weekdays = 0;
-    data.forEach(function(r){
-      var t = String(r[7] || '');
-      var d = new Date(t);
-      if (!isNaN(d.getTime())){
-        if (d >= dayStart) today++;
-        if (d >= weekStart) week++;
+    data.forEach(function(d){
+      var t = String(d.values[7] || '');
+      var dt = new Date(t);
+      if (!isNaN(dt.getTime())){
+        if (dt >= dayStart) today++;
+        if (dt >= weekStart) week++;
       }
-      if (/weekend|saturday|sunday/i.test(String(r[4] || ''))) weekdays++;
+      if (/weekend|saturday|sunday/i.test(String(d.values[4] || ''))) weekdays++;
     });
     document.getElementById('statToday').textContent = today;
     document.getElementById('statWeek').textContent = week;
@@ -225,11 +261,91 @@
 
     emptyEl.style.display = data.length ? 'none' : 'block';
     var html = '';
-    data.forEach(function(r, i){
-      html += '<tr><td>' + (i+1) + '</td>' + r.map(function(c){ return '<td>' + escapeHtml(c) + '</td>'; }).join('') + '</tr>';
+    data.forEach(function(d, i){
+      var cells = d.values.map(function(c){ return '<td>' + escapeHtml(c) + '</td>'; }).join('');
+      html += '<tr><td>' + (i+1) + '</td>' + cells +
+        '<td class="rowbtns">' +
+          '<button class="rowbtn" data-act="edit" data-src="' + d.src + '">Edit</button>' +
+          '<button class="rowbtn danger" data-act="del" data-src="' + d.src + '">Delete</button>' +
+        '</td></tr>';
     });
     rowsEl.innerHTML = html;
   }
+
+  var editModal = document.getElementById('editModal');
+  var editingSrc = null;
+
+  function openEdit(src){
+    if (!cached[src]) return;
+    document.getElementById('eName').value = cached[src][0];
+    document.getElementById('eEmail').value = cached[src][1];
+    document.getElementById('ePhone').value = cached[src][2];
+    document.getElementById('eProfession').value = cached[src][3];
+    document.getElementById('eClassTime').value = cached[src][4];
+    document.getElementById('eLevel').value = cached[src][5];
+    document.getElementById('eMessage').value = cached[src][6];
+    document.getElementById('eTime').value = cached[src][7];
+    editingSrc = src;
+    editModal.classList.add('open');
+  }
+
+  document.getElementById('editCancel').addEventListener('click', function(){
+    editModal.classList.remove('open');
+  });
+
+  function enableSave(on){
+    document.getElementById('editSave').disabled = !on;
+    document.getElementById('editCancel').disabled = !on;
+  }
+
+  document.getElementById('editSave').addEventListener('click', function(){
+    if (editingSrc == null) return;
+    var fields = {
+      'Full Name':    document.getElementById('eName').value,
+      'Email':        document.getElementById('eEmail').value,
+      'Phone Number': document.getElementById('ePhone').value,
+      'Profession':   document.getElementById('eProfession').value,
+      'Class Time':   document.getElementById('eClassTime').value,
+      'Level':        document.getElementById('eLevel').value,
+      'Message':      document.getElementById('eMessage').value,
+      'Submitted At': document.getElementById('eTime').value
+    };
+    editModal.classList.remove('open');
+    enableSave(false);
+    apiPost({ action: 'update', key: sessionStorage.panelKey, row: editingSrc + 1, fields: fields })
+      .then(function(){
+        editingSrc = null;
+        enableSave(true);
+        loadSignups();
+      })
+      .catch(function(){
+        enableSave(true);
+        loadSignups();
+      });
+  });
+
+  function apiPost(payload){
+    return fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  rowsEl.addEventListener('click', function(ev){
+    var btn = ev.target.closest ? ev.target.closest('button[data-act]') : null;
+    if (!btn) return;
+    var src = parseInt(btn.getAttribute('data-src'), 10);
+    if (btn.getAttribute('data-act') === 'edit'){
+      openEdit(src);
+    } else if (btn.getAttribute('data-act') === 'del'){
+      if (confirm('Delete this signup permanently? This cannot be undone.')){
+        apiPost({ action: 'delete', key: sessionStorage.panelKey, row: src + 1 })
+          .then(function(){ loadSignups(); });
+      }
+    }
+  });
 
   document.getElementById('csvBtn').addEventListener('click', function(){
     if (!cached.length) return;
